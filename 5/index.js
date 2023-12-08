@@ -105,7 +105,7 @@ function transformInput(input) {
 }
 
 /**
- * Get value through the pipeline of getSourceValue functions running for each provided mapping
+ * Get value through the pipeline of func running for each provided mapping
  * @param {number} value
  * @param {number[][]} mappingArray
  * @param {(acc: number, mapping: number[]) => number} func
