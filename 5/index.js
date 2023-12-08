@@ -5,21 +5,72 @@ function runPartOne(input) {
   const { seeds, ...mappings } = transformInput(input);
 
   const locations = seeds.map((seedValue) => {
-    return getDestinationValueFromPipeline(seedValue, [
-      mappings.seedToSoil,
-      mappings.soilToFertilizer,
-      mappings.fertilizerToWater,
-      mappings.waterToLight,
-      mappings.lightToTemperature,
-      mappings.temperatureToHumidity,
-      mappings.humidityToLocation,
-    ]);
+    return getValueFromPipeline(
+      seedValue,
+      [
+        mappings.seedToSoil,
+        mappings.soilToFertilizer,
+        mappings.fertilizerToWater,
+        mappings.waterToLight,
+        mappings.lightToTemperature,
+        mappings.temperatureToHumidity,
+        mappings.humidityToLocation,
+      ],
+      getDestinationValue
+    );
   });
 
   return Math.min(...locations);
 }
 
-function runPartTwo(input) {}
+function runPartTwo(input) {
+  const { seeds, ...mappings } = transformInput(input);
+
+  // Spit seeds into ranges
+  // [1, 2, 3, 4, 5, 6] => [[1, 2], [3, 4], [5, 6]
+  const seedRanges = [];
+  for (let i = 0; i < seeds.length; i++) {
+    if (i % 2 !== 0) {
+      seedRanges.push([seeds[i - 1], seeds[i - 1] + seeds[i] - 1]);
+    }
+  }
+
+  let currentLocation = 0;
+  let continueLoop = true;
+  while (continueLoop) {
+    const lowestLocationEntry = mappings.humidityToLocation.find(
+      ([val, _, range]) => isInRange(currentLocation, val, val + range - 1)
+    ) || [currentLocation, currentLocation];
+
+    const [destinationStartLoc, sourceStartHum] = lowestLocationEntry;
+    const startValue = sourceStartHum + currentLocation - destinationStartLoc;
+    const potentialSeed = getValueFromPipeline(
+      startValue,
+      [
+        mappings.temperatureToHumidity,
+        mappings.lightToTemperature,
+        mappings.waterToLight,
+        mappings.fertilizerToWater,
+        mappings.soilToFertilizer,
+        mappings.seedToSoil,
+      ],
+      getSourceValue
+    );
+
+    for (const [seedStart, seedEnd] of seedRanges) {
+      if (isInRange(potentialSeed, seedStart, seedEnd)) {
+        continueLoop = false;
+        break;
+      }
+    }
+
+    if (continueLoop) {
+      currentLocation++;
+    }
+  }
+
+  return currentLocation;
+}
 
 // Results
 console.log("Part 1: ", runPartOne(inputArray));
@@ -54,16 +105,33 @@ function transformInput(input) {
 }
 
 /**
- * Get value through the pipeline of getDestinationValue functions running for each provided mapping
+ * Get value through the pipeline of getSourceValue functions running for each provided mapping
  * @param {number} value
  * @param {number[][]} mappingArray
+ * @param {(acc: number, mapping: number[]) => number} func
  * @returns
  */
-function getDestinationValueFromPipeline(value, mappingArray) {
-  return mappingArray.reduce(
-    (acc, mapping) => getDestinationValue(acc, mapping),
-    value
-  );
+function getValueFromPipeline(value, mappingArray, func) {
+  return mappingArray.reduce((acc, mapping) => func(acc, mapping), value);
+}
+
+/**
+ * Get source value given the destination value and the mapping
+ * @param {number} destinationValue
+ * @param {number[][]} mapping
+ * @returns
+ */
+function getSourceValue(destinationValue, mapping) {
+  for (const [dest, source, range] of mapping) {
+    const rangeStart = dest;
+    const rangeEnd = dest + range - 1;
+
+    if (isInRange(destinationValue, rangeStart, rangeEnd)) {
+      return source + destinationValue - rangeStart;
+    }
+  }
+
+  return destinationValue;
 }
 
 /**
@@ -77,9 +145,8 @@ function getDestinationValue(sourceValue, mapping) {
     const [destinationStart, sourceStart, rangeLength] = entry;
     const sourceEnd = sourceStart + rangeLength - 1;
 
-    if (sourceValue >= sourceStart && sourceValue <= sourceEnd) {
-      const offset = sourceValue - sourceStart;
-      return destinationStart + offset;
+    if (isInRange(sourceValue, sourceStart, sourceEnd)) {
+      return destinationStart + sourceValue - sourceStart;
     }
   }
 
@@ -114,4 +181,8 @@ function extractMapping(input, mappingName) {
  */
 function getNumberArray(stringLine) {
   return stringLine.split(" ").map((number) => parseInt(number, 10));
+}
+
+function isInRange(value, rangeStart, rangeEnd) {
+  return value >= rangeStart && value <= rangeEnd;
 }
