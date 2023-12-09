@@ -38,30 +38,30 @@ function runPartTwo(input) {
   const { map, instructions } = transformInput(input);
 
   const startSymbols = getSymbolsByMask(map, START_SYMBOL_MASK);
+  const stepsTillEndSymbol = startSymbols.map((symbol) => {
+    let currentSymbol = symbol;
+    let stepsCount = 0;
 
-  let stepsCount = 0;
-  let currentSymbols = startSymbols;
+    while (!doesSymbolMatchMask(currentSymbol, END_SYMBOL_MASK)) {
+      const instruction = getInstruction(instructions, stepsCount);
 
-  while (!doSymbolsMatchMask(currentSymbols, END_SYMBOL_MASK)) {
-    const instruction = getInstruction(instructions, stepsCount);
-
-    const newSymbols = currentSymbols.map((symbol) => {
       if (instruction === LEFT_INSTRUCTION) {
-        return map[symbol].left;
+        currentSymbol = map[currentSymbol].left;
       } else if (instruction === RIGHT_INSTRUCTION) {
-        return map[symbol].right;
+        currentSymbol = map[currentSymbol].right;
       }
-    });
 
-    currentSymbols = newSymbols;
-    stepsCount++;
-  }
+      stepsCount++;
+    }
 
-  return stepsCount;
+    return stepsCount;
+  });
+
+  return stepsTillEndSymbol.reduce(getLeastCommonMultiplier);
 }
 
 // Results
-// console.log("Part 1: ", runPartOne(inputArray));
+console.log("Part 1: ", runPartOne(inputArray));
 console.log("Part 2: ", runPartTwo(inputArray));
 
 // Utils
@@ -92,22 +92,22 @@ function getSymbolsByMask(map, mask) {
   return Object.keys(map).filter((symbol) => doesSymbolMatchMask(symbol, mask));
 }
 
-function doSymbolsMatchMask(symbols, mask) {
-  return symbols.every((symbol) => doesSymbolMatchMask(symbol, mask));
-}
-
 function doesSymbolMatchMask(symbol, mask) {
   const symbolChars = symbol.split("");
 
   for (let i = 0; i < mask.length; i++) {
-    if (
-      symbolChars[i] !== mask[i] &&
-      mask[i] !== IGNORED_CHARACTER &&
-      mask[i] !== IGNORED_CHARACTER
-    ) {
+    if (symbolChars[i] !== mask[i] && mask[i] !== IGNORED_CHARACTER) {
       return false;
     }
   }
 
   return true;
+}
+
+function getLeastCommonMultiplier(a, b) {
+  function gcd(a, b) {
+    return a ? gcd(b % a, a) : b;
+  }
+
+  return (a * b) / gcd(a, b);
 }
